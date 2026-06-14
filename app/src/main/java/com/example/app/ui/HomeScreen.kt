@@ -1,8 +1,11 @@
 package com.example.app.ui
 
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -23,6 +26,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,6 +35,10 @@ import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.example.app.model.internal.uistates.HomeScreenUIState
 import com.example.app.navigation.HomeDetails
 import com.example.app.viewmodel.HomeViewModel
@@ -79,10 +88,29 @@ fun HomeScreen(
                     )
                 }
                 items(pagingState.itemCount) {
-                    Text(
-                        text = pagingState[it]?.title ?: "No title",
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = pagingState[it]?.title ?: "No title",
+                            modifier = Modifier.weight(0.6f).padding(16.dp)
+                        )
+                        AsyncImage(
+                            modifier = Modifier.weight(0.4f),
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data("https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcQ_Zuz3haRHrSz0f3bnMlUTGa14Qc7Z5LLQ3-l04P98hv9CMXQU")
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            onState = { state ->
+                                if (state is AsyncImagePainter.State.Error) {
+                                    // Log this to Logcat to see the precise Exception thrown by Coil
+                                    Log.e("CoilError", "Failed to load image", state.result.throwable)
+                                }
+                            }
+                        )
+                    }
                 }
 
                 if(pagingState.loadState.append is LoadState.Loading) {
@@ -98,83 +126,6 @@ fun HomeScreen(
                 }
 
             }
-
-            Text("-------------------Normal Data-------------------")
-
-            /*HomeContent(
-                modifier = Modifier,
-                state = state,
-                onRetry = {
-                    homeViewModel.getHomeData()
-                }
-            )*/
-        }
-    }
-}
-
-@Composable
-fun HomeContent(
-    modifier: Modifier,
-    state: HomeScreenUIState,
-    onRetry: () -> Unit,
-    onQuery: (String) -> Unit = {}
-) {
-    var textfield by remember {
-        mutableStateOf(
-            TextFieldValue("")
-        )
-    }
-    var job: Job? = null
-    val scope = rememberCoroutineScope()
-    BasicTextField(
-        value = textfield,
-        onValueChange = {
-            textfield = it
-            job?.cancel()
-            job = scope.launch {
-                delay(500)
-                onQuery(it.text)
-            }
-        }
-    )
-
-    if(state.isLoading) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-
-    if(state.errorMessage.isNotBlank()) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(text = state.errorMessage)
-            Button(
-                onClick = {
-                    onRetry()
-                }
-            ) {
-                Text(text = "Retry")
-            }
-        }
-        return
-    }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        items(state.articles.size) { index ->
-            Text(
-                text = state.articles[index].title ?: "No title",
-                modifier = Modifier.padding(16.dp)
-            )
         }
     }
 }

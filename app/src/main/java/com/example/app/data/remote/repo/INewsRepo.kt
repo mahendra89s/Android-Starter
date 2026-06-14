@@ -6,4 +6,6 @@ import retrofit2.Response
 interface INewsRepo {
     suspend fun getNews(searchQuery: String = ""): Response<TopHeadlinesRM>
 
+    suspend fun uploadFile(byteArray: ByteArray): Response<Boolean>
+
 }
