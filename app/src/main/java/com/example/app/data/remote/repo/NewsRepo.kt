@@ -13,7 +13,7 @@ class NewsRepo @Inject constructor(
         retrofit.create(ApiService::class.java)
     }
 
-    override suspend fun getNews(): Response<TopHeadlinesRM> {
-        return apiService.getNews()
+    override suspend fun getNews(searchQuery: String): Response<TopHeadlinesRM> {
+        return apiService.getNews(searchQuery)
     }
 }

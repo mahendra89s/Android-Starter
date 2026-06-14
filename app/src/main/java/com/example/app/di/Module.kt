@@ -61,10 +61,4 @@ object Module {
     fun provideNewsRepo(
         retrofit: Retrofit
     ): INewsRepo = NewsRepo(retrofit)
-
-    @Singleton
-    @Provides
-    fun providesPagingDataSource(
-        retrofit: Retrofit
-    ): PagingDataSource = PagingDataSource(retrofit)
 }

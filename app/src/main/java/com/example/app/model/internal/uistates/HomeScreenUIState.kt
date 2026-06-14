@@ -1,10 +1,9 @@
 package com.example.app.model.internal.uistates
 
 import com.example.app.model.network.ArticleRM
-import com.example.app.model.network.TopHeadlinesRM
 
-sealed interface HomeScreenUIState {
-    data class Success(val articles: List<ArticleRM>) : HomeScreenUIState
-    data object Loading : HomeScreenUIState
-    data class Error(val error: String) : HomeScreenUIState
-}
+data class HomeScreenUIState (
+    val articles: List<ArticleRM> = emptyList(),
+    val isLoading: Boolean = false,
+    val errorMessage: String = ""
+)

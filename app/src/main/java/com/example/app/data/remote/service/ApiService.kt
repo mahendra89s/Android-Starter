@@ -8,7 +8,9 @@ import retrofit2.http.Query
 
 interface ApiService {
     @GET("top-headlines")
-    suspend fun getNews(): Response<TopHeadlinesRM>
+    suspend fun getNews(
+        @Query("q") searchQuery: String
+    ): Response<TopHeadlinesRM>
 
     @GET("everything")
     suspend fun getPaginatedNews(

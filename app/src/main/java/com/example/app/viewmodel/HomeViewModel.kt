@@ -5,52 +5,91 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.example.app.data.datastore.AppDataStore
 import com.example.app.data.db.dao.ArticleDao
 import com.example.app.data.db.entities.ArticleEntity
 import com.example.app.data.remote.repo.INewsRepo
 import com.example.app.model.internal.uistates.HomeScreenUIState
+import com.example.app.model.network.ArticleRM
 import com.example.app.pagingsource.PagingDataSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import retrofit2.Retrofit
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val newsRepo: INewsRepo,
     private val articleDao: ArticleDao,
-    private val pagingDataSource: PagingDataSource,
-    private val appDataStore: AppDataStore
+    private val appDataStore: AppDataStore,
+    private val retrofit: Retrofit
 ): ViewModel() {
-    private val _state: MutableStateFlow<HomeScreenUIState> = MutableStateFlow(HomeScreenUIState.Loading)
+    private val _state: MutableStateFlow<HomeScreenUIState> = MutableStateFlow(HomeScreenUIState())
     val state: StateFlow<HomeScreenUIState> = _state
 
-    val pagingData = Pager(
-        config = PagingConfig(
-            pageSize = 20
-        )
-    ) {
-        pagingDataSource
-    }.flow.cachedIn(viewModelScope)
+    val searchQuery = MutableStateFlow("")
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+    val pagingData: Flow<PagingData<ArticleRM>> =
+        searchQuery
+            .debounce(300.milliseconds)
+            .distinctUntilChanged()
+            .flatMapLatest { q ->
+                Pager(
+                    PagingConfig(pageSize = 20)
+                ) {
+                    PagingDataSource(retrofit, q)
+                }.flow
+            }.cachedIn(viewModelScope)
 
+
+    init {
+        viewModelScope.launch {
+            _state
+                .debounce(500)
+                .distinctUntilChanged()
+                .collect {
+                    getHomeData()
+            }
+        }
+    }
     fun getHomeData() {
         viewModelScope.launch(Dispatchers.IO) {
-            _state.value = HomeScreenUIState.Loading
+            _state.update {
+                it.copy(
+                    isLoading = true
+                )
+            }
             runCatching {
                 newsRepo.getNews()
             }.fold(
-                onSuccess = {
+                onSuccess = { it ->
                     val news = it.body()
                     if(news ==  null) {
-                        _state.value = HomeScreenUIState.Error("Data not available")
+                        _state.update {
+                            it.copy(
+                                errorMessage = "Data not available"
+                            )
+                        }
                         return@fold
                     }
-                    _state.value = HomeScreenUIState.Success(news.articles ?: emptyList())
+                    _state.update {
+                        it.copy(
+                            articles = news.articles ?: emptyList()
+                        )
+                    }
                     articleDao.insertArticle(
                         ArticleEntity(
                             id = "${System.currentTimeMillis()}",
@@ -72,7 +111,11 @@ class HomeViewModel @Inject constructor(
                     }
                 },
                 onFailure = {
-                    _state.value = HomeScreenUIState.Error(it.message ?: "Unknown error")
+                    _state.update {
+                        it.copy(
+                            errorMessage = it.errorMessage
+                        )
+                    }
                 }
             )
         }
@@ -90,10 +133,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun updateState(){
-        viewModelScope.launch {
-            _state.debounce(500).collect {  }
-        }
+    fun onSearchQueryChange(
+        searchQuery: String
+    ){
+        this.searchQuery.value = searchQuery
     }
 
 }
