@@ -80,14 +80,16 @@ class HomeViewModel @Inject constructor(
                     if(news ==  null) {
                         _state.update {
                             it.copy(
-                                errorMessage = "Data not available"
+                                errorMessage = "Data not available",
+                                isLoading = false
                             )
                         }
                         return@fold
                     }
                     _state.update {
                         it.copy(
-                            articles = news.articles ?: emptyList()
+                            articles = news.articles ?: emptyList(),
+                            isLoading = false
                         )
                     }
                     articleDao.insertArticle(
@@ -113,7 +115,8 @@ class HomeViewModel @Inject constructor(
                 onFailure = {
                     _state.update {
                         it.copy(
-                            errorMessage = it.errorMessage
+                            errorMessage = it.errorMessage,
+                            isLoading = false
                         )
                     }
                 }

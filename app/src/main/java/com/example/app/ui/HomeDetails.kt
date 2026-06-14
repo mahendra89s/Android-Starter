@@ -16,7 +16,8 @@ import com.example.app.viewmodel.HomeViewModel
 @Composable
 fun HomeDetails(
     navController: NavController,
-    homeViewModel: HomeViewModel
+    homeViewModel: HomeViewModel,
+    articleName: String
 ) {
     val state by homeViewModel.state.collectAsStateWithLifecycle()
 
@@ -26,7 +27,7 @@ fun HomeDetails(
         Column(
             modifier = Modifier.padding(paddingValues).fillMaxSize()
         ) {
-            Text(text = "Home Details Screen")
+            Text(text = articleName)
             Button(
                 onClick = {
                     navController.navigateUp()

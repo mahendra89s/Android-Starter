@@ -62,7 +62,7 @@ fun HomeScreen(
         ) {
             Button(
                 onClick = {
-                    navController.navigate(HomeDetails)
+                    navController.navigate(HomeDetails("abc"))
                 }
             ) {
                 Text(text = "Go to Details")

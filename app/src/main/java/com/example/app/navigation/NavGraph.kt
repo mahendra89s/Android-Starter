@@ -7,6 +7,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.example.app.ui.HomeDetails
 import com.example.app.ui.HomeScreen
 import com.example.app.viewmodel.HomeViewModel
@@ -27,13 +28,15 @@ fun NavGraph(
             )
         }
         composable<HomeDetails> { backStackEntry ->
+            val articleName = backStackEntry.toRoute<HomeDetails>()
             val backStackEntry = remember(backStackEntry) {
                 navController.getBackStackEntry<HomeRoute>()
             }
             val viewModel = hiltViewModel<HomeViewModel>(backStackEntry)
             HomeDetails(
                 navController = navController,
-                homeViewModel = viewModel
+                homeViewModel = viewModel,
+                articleName = articleName.articleName
             )
         }
     }

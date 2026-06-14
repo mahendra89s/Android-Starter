@@ -6,4 +6,6 @@ import kotlinx.serialization.Serializable
 data object HomeRoute
 
 @Serializable
-data object HomeDetails
+data class HomeDetails(
+    val articleName: String
+)
