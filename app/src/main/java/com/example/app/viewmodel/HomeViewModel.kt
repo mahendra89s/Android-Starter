@@ -6,13 +6,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
-import com.example.app.data.datastore.DataStore
+import com.example.app.data.datastore.AppDataStore
 import com.example.app.data.db.dao.ArticleDao
 import com.example.app.data.db.entities.ArticleEntity
 import com.example.app.data.remote.repo.INewsRepo
 import com.example.app.model.internal.uistates.HomeScreenUIState
 import com.example.app.pagingsource.PagingDataSource
-import com.example.app.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +25,7 @@ class HomeViewModel @Inject constructor(
     private val newsRepo: INewsRepo,
     private val articleDao: ArticleDao,
     private val pagingDataSource: PagingDataSource,
-    private val dataStore: DataStore
+    private val appDataStore: AppDataStore
 ): ViewModel() {
     private val _state: MutableStateFlow<HomeScreenUIState> = MutableStateFlow(HomeScreenUIState.Loading)
     val state: StateFlow<HomeScreenUIState> = _state
@@ -42,33 +41,40 @@ class HomeViewModel @Inject constructor(
     fun getHomeData() {
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = HomeScreenUIState.Loading
-            when(val news = newsRepo.getNews()){
-                is Resource.Success -> {
-                    _state.value = HomeScreenUIState.Success(news.data?.articles ?: emptyList())
+            runCatching {
+                newsRepo.getNews()
+            }.fold(
+                onSuccess = {
+                    val news = it.body()
+                    if(news ==  null) {
+                        _state.value = HomeScreenUIState.Error("Data not available")
+                        return@fold
+                    }
+                    _state.value = HomeScreenUIState.Success(news.articles ?: emptyList())
                     articleDao.insertArticle(
                         ArticleEntity(
                             id = "${System.currentTimeMillis()}",
-                            title = news.data?.articles?.firstOrNull()?.title ?: "No title",
-                            description = news.data?.articles?.firstOrNull()?.description ?: "No description",
-                            urlToImage = news.data?.articles?.firstOrNull()?.urlToImage ?: "",
-                            content = news.data?.articles?.firstOrNull()?.content ?: "",
-                            publishedAt = news.data?.articles?.firstOrNull()?.publishedAt ?: "",
-                            sourceId = news.data?.articles?.firstOrNull()?.source?.id ?: "",
-                            sourceName = news.data?.articles?.firstOrNull()?.source?.name ?: "",
-                            url = news.data?.articles?.firstOrNull()?.url ?: "",
-                            author = news.data?.articles?.firstOrNull()?.author ?: ""
+                            title = news.articles?.firstOrNull()?.title ?: "No title",
+                            description = news.articles?.firstOrNull()?.description ?: "No description",
+                            urlToImage = news.articles?.firstOrNull()?.urlToImage ?: "",
+                            content = news.articles?.firstOrNull()?.content ?: "",
+                            publishedAt = news.articles?.firstOrNull()?.publishedAt ?: "",
+                            sourceId = news.articles?.firstOrNull()?.source?.id ?: "",
+                            sourceName = news.articles?.firstOrNull()?.source?.name ?: "",
+                            url = news.articles?.firstOrNull()?.url ?: "",
+                            author = news.articles?.firstOrNull()?.author ?: ""
                         )
                     )
                     readDbData()
-                    dataStore.save(DataStore.USER_NAME_KEY.name, "John Doe")
-                    dataStore.get(DataStore.USER_NAME_KEY.name)?.let {
+                    appDataStore.saveUserNameKey( "John Doe")
+                    appDataStore.getUserNameKey()?.let {
                         Log.d("HomeViewModel", "User name from DataStore: $it")
                     }
+                },
+                onFailure = {
+                    _state.value = HomeScreenUIState.Error(it.message ?: "Unknown error")
                 }
-                is Resource.Error -> {
-                    _state.value = HomeScreenUIState.Error(news.error ?: "Unknown error")
-                }
-            }
+            )
         }
     }
 
