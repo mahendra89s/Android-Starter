@@ -4,6 +4,8 @@ import com.example.app.data.remote.interceptor.AuthInterceptor
 import com.example.app.data.remote.repo.INewsRepo
 import com.example.app.data.remote.repo.NewsRepo
 import com.example.app.pagingsource.PagingDataSource
+import com.example.app.utils.ILogger
+import com.example.app.utils.Logger
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -61,4 +63,8 @@ object Module {
     fun provideNewsRepo(
         retrofit: Retrofit
     ): INewsRepo = NewsRepo(retrofit)
+
+    @Singleton
+    @Provides
+    fun provideLogger(): ILogger = Logger()
 }

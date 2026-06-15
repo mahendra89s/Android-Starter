@@ -1,6 +1,5 @@
 package com.example.app.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -14,6 +13,7 @@ import com.example.app.data.remote.repo.INewsRepo
 import com.example.app.model.internal.uistates.HomeScreenUIState
 import com.example.app.model.network.ArticleRM
 import com.example.app.pagingsource.PagingDataSource
+import com.example.app.utils.ILogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
@@ -35,7 +36,8 @@ class HomeViewModel @Inject constructor(
     private val newsRepo: INewsRepo,
     private val articleDao: ArticleDao,
     private val appDataStore: AppDataStore,
-    private val retrofit: Retrofit
+    private val retrofit: Retrofit,
+    private val logger: ILogger
 ): ViewModel() {
     private val _state: MutableStateFlow<HomeScreenUIState> = MutableStateFlow(HomeScreenUIState())
     val state: StateFlow<HomeScreenUIState> = _state
@@ -73,7 +75,7 @@ class HomeViewModel @Inject constructor(
         }
     }
     fun getHomeData() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _state.update {
                 it.copy(
                     isLoading = true
@@ -99,25 +101,29 @@ class HomeViewModel @Inject constructor(
                             isLoading = false
                         )
                     }
-                    articleDao.insertArticle(
-                        ArticleEntity(
-                            id = "${System.currentTimeMillis()}",
-                            title = news.articles?.firstOrNull()?.title ?: "No title",
-                            description = news.articles?.firstOrNull()?.description ?: "No description",
-                            urlToImage = news.articles?.firstOrNull()?.urlToImage ?: "",
-                            content = news.articles?.firstOrNull()?.content ?: "",
-                            publishedAt = news.articles?.firstOrNull()?.publishedAt ?: "",
-                            sourceId = news.articles?.firstOrNull()?.source?.id ?: "",
-                            sourceName = news.articles?.firstOrNull()?.source?.name ?: "",
-                            url = news.articles?.firstOrNull()?.url ?: "",
-                            author = news.articles?.firstOrNull()?.author ?: ""
+                    withContext(Dispatchers.IO){
+                        articleDao.insertArticle(
+                            ArticleEntity(
+                                id = "${System.currentTimeMillis()}",
+                                title = news.articles?.firstOrNull()?.title ?: "No title",
+                                description = news.articles?.firstOrNull()?.description ?: "No description",
+                                urlToImage = news.articles?.firstOrNull()?.urlToImage ?: "",
+                                content = news.articles?.firstOrNull()?.content ?: "",
+                                publishedAt = news.articles?.firstOrNull()?.publishedAt ?: "",
+                                sourceId = news.articles?.firstOrNull()?.source?.id ?: "",
+                                sourceName = news.articles?.firstOrNull()?.source?.name ?: "",
+                                url = news.articles?.firstOrNull()?.url ?: "",
+                                author = news.articles?.firstOrNull()?.author ?: ""
+                            )
                         )
-                    )
-                    readDbData()
-                    appDataStore.saveUserNameKey( "John Doe")
-                    appDataStore.getUserNameKey()?.let {
-                        Log.d("HomeViewModel", "User name from DataStore: $it")
+                        readDbData()
+                        appDataStore.saveUserNameKey( "John Doe")
+                        appDataStore.getUserNameKey()?.let {
+                            logger.debug("HomeViewModel", "User name from DataStore: $it")
+                        }
                     }
+
+
                 },
                 onFailure = {
                     _state.update {
@@ -136,9 +142,9 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             val articles = articleDao.getAllArticles()
             if(articles.isNotEmpty()) {
-                Log.d("HomeViewModel", "Articles from DB: ${articles}")
+                logger.debug("HomeViewModel", "Articles from DB: ${articles}")
             } else {
-                Log.d("HomeViewModel", "No articles in DB")
+                logger.debug("HomeViewModel", "No articles in DB")
             }
         }
     }
